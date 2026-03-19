@@ -109,20 +109,67 @@ EMDASH_PATTERN = re.compile(r'[\u2014\u2013]')
 def extract_paragraphs(path):
     from docx import Document
     doc = Document(path)
-    return [p.text.strip() for p in doc.paragraphs if p.text.strip() and len(p.text.split()) > 10]
+    raw = []
+    for p in doc.paragraphs:
+        text = p.text.strip()
+        if not text or len(text.split()) <= 10:
+            continue
+        # Skip headings (usually short and bold)
+        if p.style and p.style.name and 'heading' in p.style.name.lower():
+            continue
+        # Skip table-of-contents style
+        if p.style and p.style.name and 'toc' in p.style.name.lower():
+            continue
+        raw.append(text)
+
+    # If document has very few paragraphs, try splitting long ones
+    if len(raw) <= 2:
+        expanded = []
+        for text in raw:
+            if len(text.split()) > 300:
+                # Split on double newlines or very long text into ~150 word chunks
+                chunks = text.split('\n\n')
+                if len(chunks) > 1:
+                    expanded.extend([c.strip() for c in chunks if len(c.strip().split()) > 10])
+                else:
+                    words = text.split()
+                    for j in range(0, len(words), 150):
+                        chunk = ' '.join(words[j:j+150])
+                        if len(chunk.split()) > 10:
+                            expanded.append(chunk)
+            else:
+                expanded.append(text)
+        return expanded if expanded else raw
+
+    return raw
 
 def split_sentences(text):
     DOT = "\u00b7"
     DDOT = "\u00b7\u00b7"
+    # Protect abbreviations and decimals
     text = re.sub(r'(\d)\.\s*(\d)', lambda m: m.group(1)+DOT+m.group(2), text)
     text = re.sub(r'(et al)\.\s', lambda m: m.group(1)+DDOT+" ", text)
-    for abbr in [r'vgl', r'bzw', r'bspw', r'ca', r'ggf']:
+    for abbr in [r'vgl', r'bzw', r'bspw', r'ca', r'ggf', r'usw', r'etc', r'sog', r'ebd']:
         text = re.sub(r'('+abbr+r')\.\s', lambda m: m.group(1)+DDOT+" ", text, flags=re.IGNORECASE)
-    text = re.sub(r'(z\.B)\.\s', lambda m: m.group(1)+DDOT+" ", text, flags=re.IGNORECASE)
-    text = re.sub(r'(d\.h)\.\s', lambda m: m.group(1)+DDOT+" ", text, flags=re.IGNORECASE)
+    text = re.sub(r'(z\.\s*B)\.\s', lambda m: m.group(1)+DDOT+" ", text, flags=re.IGNORECASE)
+    text = re.sub(r'(d\.\s*h)\.\s', lambda m: m.group(1)+DDOT+" ", text, flags=re.IGNORECASE)
+    text = re.sub(r'(u\.\s*a)\.\s', lambda m: m.group(1)+DDOT+" ", text, flags=re.IGNORECASE)
+    text = re.sub(r'(o\.\s*[Ää])\.\s', lambda m: m.group(1)+DDOT+" ", text, flags=re.IGNORECASE)
     text = re.sub(r'(S)\.\s(\d)', lambda m: m.group(1)+DDOT+" "+m.group(2), text)
-    text = re.sub(r'([A-Z\u00c4\u00d6\u00dc])\.\s', lambda m: m.group(1)+DDOT+" ", text)
-    sents = re.split(r'(?<=[.!?])\s+(?=[A-Z\u00c4\u00d6\u00dc\d\(\u201e*])', text)
+    text = re.sub(r'([A-Z\u00c4\u00d6\u00dc])\.\s(?=[A-Z\u00c4\u00d6\u00dc]\.)', lambda m: m.group(1)+DDOT+" ", text)
+
+    # Primary split: after sentence-ending punctuation followed by uppercase or opening quote
+    sents = re.split(r'(?<=[.!?])\s+(?=[A-Z\u00c4\u00d6\u00dc\d\(\u201e\u201c"*])', text)
+
+    # Fallback: if only 1 result, try more aggressive splitting
+    if len(sents) <= 1 and len(text.split()) > 20:
+        # Try splitting on any period followed by space
+        sents = re.split(r'(?<=[.!?])\s+', text)
+
+    # Second fallback: split on period-space-any-letter
+    if len(sents) <= 1 and len(text.split()) > 20:
+        sents = [s.strip() for s in text.replace('. ', '.\n').split('\n')]
+
     result = []
     for s in sents:
         s = s.replace(DDOT, ".").replace(DOT, ".").strip()

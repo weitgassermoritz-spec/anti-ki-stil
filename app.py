@@ -262,14 +262,21 @@ else:
                     "para": i + 1, "score": p["score"],
                     "fix": p["fixes"][0],
                     "issue": p["issues"][0] if p["issues"] else "",
+                    "type": "paragraph",
                 })
+        # Cross-patterns: max 2 per chapter, with real severity scores
+        cp_count = 0
         for cp in r.get("cross_patterns", []):
-            if cp["severity"] == "high":
-                all_fixes.append({
-                    "file": r["file"].replace(".docx", ""),
-                    "para": cp["paragraphs"][0], "score": 85,
-                    "fix": cp["fix"], "issue": cp["detail"],
-                })
+            if cp_count >= 2:
+                break
+            cp_score = 75 if cp["severity"] == "high" else 60
+            all_fixes.append({
+                "file": r["file"].replace(".docx", ""),
+                "para": cp["paragraphs"][0], "score": cp_score,
+                "fix": cp["fix"], "issue": cp["detail"],
+                "type": "pattern",
+            })
+            cp_count += 1
 
     all_fixes.sort(key=lambda x: -x["score"])
 
