@@ -1,0 +1,126 @@
+{
+  "_meta": {
+    "version": "3.1",
+    "created": "2026-03-19",
+    "description": "Baseline-Statistiken für menschliches vs. KI-generiertes akademisches Schreiben (deutsch)",
+    "sources": [
+      "PMC10760418 (2024) - Burstiness in academic abstracts, human vs ChatGPT",
+      "GPTZero documentation - Perplexity/Burstiness thresholds",
+      "Turnitin AIW-2 model documentation",
+      "Sigurd et al. (2004) - Word/sentence length distributions in German",
+      "Eigene Analyse: 16 Kapitel der BA Weitgasser (FH WKW, 2026)"
+    ]
+  },
+
+  "human_writing": {
+    "description": "Statistische Werte für definitiv menschlich geschriebene akademische Texte (pre-2022 Studien + bewiesene menschliche Autoren)",
+
+    "sentence_length": {
+      "mean": {"range": [16, 24], "typical": 20, "unit": "words"},
+      "std_dev": {"range": [8, 16], "typical": 11},
+      "cv_burstiness": {"range": [0.40, 0.85], "typical": 0.55, "note": "CV = std/mean. Höher = menschlicher"},
+      "min_observed": 3,
+      "max_observed": 55,
+      "pct_in_20_35_band": {"range": [30, 55], "typical": 42, "note": "% der Sätze mit 20-35 Wörtern"}
+    },
+
+    "burstiness_score": {
+      "formula": "B = (σ / μ) * 100",
+      "structured_abstracts": {"mean": 83.14, "sd": 17.15, "source": "PMC10760418"},
+      "unstructured_abstracts": {"mean": 271.13, "sd": 459.07, "source": "PMC10760418"},
+      "note": "Menschliche Texte haben HOHE und VARIABLE Burstiness"
+    },
+
+    "sentence_starters": {
+      "diversity_ratio": {"range": [0.55, 0.85], "typical": 0.68, "note": "unique starters / total sentences"},
+      "max_single_starter_pct": {"range": [0.06, 0.15], "typical": 0.10, "note": "Anteil des häufigsten Starters"},
+      "common_starters_de": ["Die", "Der", "Das", "In", "Auch", "Dabei", "Ein", "Allerdings", "So", "Ob"]
+    },
+
+    "paragraph_length": {
+      "mean": {"range": [60, 130], "typical": 95, "unit": "words"},
+      "cv": {"range": [0.25, 0.65], "typical": 0.40, "note": "Höher = mehr Variation = menschlicher"},
+      "min_observed": 25,
+      "max_observed": 220,
+      "spread_min_max": {"min": 60, "note": "Differenz zwischen kürzestem und längstem Absatz"}
+    },
+
+    "perplexity": {
+      "gptzero_threshold": 85,
+      "human_typical": {"range": [85, 300], "note": "Über 85 = wahrscheinlich menschlich"},
+      "note": "Wir können keine echte Perplexity berechnen ohne LLM-Zugang, nutzen Bigram-Entropie als Proxy"
+    },
+
+    "bigram_entropy": {
+      "human_typical": {"range": [8.5, 12.5], "typical": 10.2},
+      "note": "Höhere Entropie = unvorhersagbarer = menschlicher"
+    }
+  },
+
+  "ai_writing": {
+    "description": "Statistische Werte für KI-generierte akademische Texte (ChatGPT, Claude, etc.)",
+
+    "sentence_length": {
+      "mean": {"range": [20, 30], "typical": 25},
+      "std_dev": {"range": [4, 8], "typical": 6},
+      "cv_burstiness": {"range": [0.15, 0.35], "typical": 0.24},
+      "pct_in_20_35_band": {"range": [60, 90], "typical": 75}
+    },
+
+    "burstiness_score": {
+      "structured_abstracts": {"mean": 64.31, "sd": 8.24, "source": "PMC10760418"},
+      "unstructured_abstracts": {"mean": 24.90, "sd": 15.49, "source": "PMC10760418"},
+      "note": "KI-Texte haben NIEDRIGE und KONSISTENTE Burstiness"
+    },
+
+    "sentence_starters": {
+      "diversity_ratio": {"range": [0.30, 0.55], "typical": 0.42},
+      "max_single_starter_pct": {"range": [0.15, 0.35], "typical": 0.22},
+      "typical_overused": ["Die", "Diese", "Es", "Dabei", "Darüber", "Insbesondere"]
+    },
+
+    "paragraph_length": {
+      "mean": {"range": [80, 130], "typical": 105},
+      "cv": {"range": [0.05, 0.20], "typical": 0.12, "note": "Sehr gleichmäßig!"},
+      "typical_pattern": "Alle Absätze ±20W vom Durchschnitt"
+    },
+
+    "bigram_entropy": {
+      "ai_typical": {"range": [5.5, 8.5], "typical": 7.0},
+      "note": "Niedrigere Entropie = vorhersagbarer"
+    }
+  },
+
+  "thresholds": {
+    "description": "Schwellenwerte für die Klassifikation (kalibriert an Turnitin-Logik)",
+
+    "sentence_level": {
+      "definitely_human": {"max_score": 35},
+      "likely_human": {"max_score": 50},
+      "uncertain": {"max_score": 65},
+      "likely_ai": {"max_score": 80},
+      "definitely_ai": {"min_score": 80}
+    },
+
+    "document_level": {
+      "turnitin_method": "% der Sätze mit Score >= 50 (like Turnitin: % AI-classified sentences)",
+      "safe": {"max_pct": 20, "label": "Kein Risiko"},
+      "low_risk": {"max_pct": 35, "label": "Niedriges Risiko"},
+      "medium_risk": {"max_pct": 55, "label": "Mittleres Risiko — Prof könnte nachfragen"},
+      "high_risk": {"max_pct": 75, "label": "Hohes Risiko — wird wahrscheinlich geflaggt"},
+      "very_high": {"min_pct": 75, "label": "Sehr hohes Risiko — wird definitiv geprüft"}
+    },
+
+    "key_indicators": {
+      "burstiness_cv_red": 0.30,
+      "burstiness_cv_yellow": 0.40,
+      "burstiness_cv_green": 0.50,
+      "band_ratio_red": 0.70,
+      "band_ratio_yellow": 0.55,
+      "starter_diversity_red": 0.45,
+      "starter_diversity_yellow": 0.55,
+      "paragraph_cv_red": 0.15,
+      "paragraph_cv_yellow": 0.25
+    }
+  }
+}

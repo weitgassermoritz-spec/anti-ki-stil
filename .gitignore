@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.DS_Store
+*.docx
+KI_Detektor_v3_Report.html
+KI_Detektor_v3_1_Report.html
